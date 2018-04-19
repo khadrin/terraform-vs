@@ -1,0 +1,29 @@
+#!/bin/bash
+
+BUCKET="$1"
+TF_DIR="${2%/}"
+
+if [ -z "$BUCKET" -o -z "$TF_DIR" ]; then
+  echo "Usage: remote-state-tf BUCKET SUBDIR" 1>&2
+  echo "  generate remote state config (SUBDIR/remote-state.tf)" 1>&2
+  exit 1
+fi
+
+TF_PATH="${TF_DIR}/remote-state.tf"
+
+ID=$(date -u +"%Y%m%d%H%m%S")
+if [ -e "$TF_PATH" ]; then
+
+  echo "($TF_PATH) already exists. won't overwrite"
+else
+  cat <<EOM |
+terraform {
+  backend "s3" {
+    bucket = "$BUCKET"
+    key    = "${TF_DIR}/${ID}/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+EOM
+  tee "$TF_PATH"
+fi

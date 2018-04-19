@@ -1,0 +1,51 @@
+#!/bin/bash
+
+MODE="$1"
+ROOTDIR="${2:-.}"
+if [ -z "$MODE" ]; then
+  echo "Usage: terraform-audit {summary|compact|details|full} [ROOTDIR]"
+  exit 1
+fi
+
+for DIR in `find "$ROOTDIR" -type d`; do
+  (
+    cd "$DIR"
+    if [ -e "./remote-state.tf" ]; then
+      PLAN=`mktemp`
+      PLANTXT=`mktemp`
+      WORKSPACE=$(terraform workspace show)
+      terraform init >/dev/null 2>&1
+      terraform get >/dev/null 2>&1
+      terraform plan -detailed-exitcode -out "$PLAN" >"$PLANTXT" 2>&1
+      case "$?" in
+      0)
+	echo "$DIR ($WORKSPACE): no changes"
+        ;;
+      1)
+        echo "$DIR ($WORKSPACE): ERROR!!!"
+        ;;
+      2)
+        case "$MODE" in
+        summary)
+          echo "$DIR ($WORKSPACE): `grep 'Plan:' $PLANTXT`"
+          ;;
+        compact)
+          echo "# $DIR ($WORKSPACE)"
+          terraform show -no-color "$PLAN" 2>&1 | grep -E '^[ ]*[-~+]+'
+          ;;
+        details)
+          echo "# $DIR ($WORKSPACE)"
+          terraform show -no-color "$PLAN" 2>&1 | grep -v '^$'
+          ;;
+        full)
+          echo "# $DIR ($WORKSPACE)"
+          terraform show "$PLAN" 2>&1
+          ;;
+        esac
+        ;;
+      esac
+    else
+      true # && echo "skipping ($DIR)" # debugging
+    fi
+  )
+done

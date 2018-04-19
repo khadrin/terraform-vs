@@ -1,0 +1,15 @@
+- name: Create a sandbox instance
+  hosts: localhost
+  tasks:
+    - name: Launch instance
+      ec2:
+        exact_count: 1
+        count_tag:
+          Name: ansible_instance
+        instance_tags:
+          Name: ansible_instance
+        instance_type: t2.micro
+        image: ami-f973ab84
+        wait: yes
+        vpc_subnet_id: subnet-2156d349
+        assign_public_ip: yes
